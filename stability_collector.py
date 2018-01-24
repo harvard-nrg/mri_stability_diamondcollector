@@ -56,7 +56,7 @@ class StabilityCollector(diamond.collector.Collector):
                 # divide document into sections
                 sections = re.findall('Stability (\w+) results:\n\nslice#(.*)\n 1(.*)\n 2(.*)\n 3(.*)\n 4(.*)\n 5(.*)\n 6(.*)\n 7(.*)\n 8(.*)\n 9(.*)\n10(.*)\n11(.*)\n12(.*)\n13(.*)\n14(.*)\n15(.*)\n16(.*)\n', lines, re.MULTILINE)
                 # parse each section
-                for section in sections:
+                for section in sections: 
                     section = list(section)
                     section_type = section.pop(0)
                     header = section.pop(0)
@@ -65,10 +65,12 @@ class StabilityCollector(diamond.collector.Collector):
                     # tableType.columnName.rowNum value
                     metricnames = [('{}.{}.{}.{}.{}'.format(self.dotlocation(),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
                     for metricname,value in metricnames:
-                        self.publish(metricname,value,mtime)
+                        self.publish(metricname,value,timestamp=mtime)
+            # mark file as ingested
             fileparts = os.path.splitext(file)
             new_file = '{}{}{}'.format(fileparts[0],self.ingest_mark,fileparts[1])
             os.rename(file,new_file)
+            logger.info('processed {} with coil {}'.format(file,coil))
 
     def _resolve_channels(self, channel):
         channelmap = {
@@ -108,8 +110,8 @@ class StabilityCollector(diamond.collector.Collector):
             raise
         
         # Publish Metric
-        #self.publish_metric(metric)
-        print(metric) ##for testing
+        self.publish_metric(metric)
+        #print(metric) ##for testing
 
 if __name__ == '__main__':
     instance = StabilityCollector()
