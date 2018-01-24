@@ -16,6 +16,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
 class StabilityCollector(diamond.collector.Collector):
 
     def __init__(self):
+        diamond.collector.Collector.__init__(self)
         self.ingest_mark = '-Ingested'
         self.scanner_location = 'Harvard/Northwest/Bay2' ##for testing
         self.base_dir = '/ncf/dicom-backups/_Scanner'
@@ -33,8 +34,6 @@ class StabilityCollector(diamond.collector.Collector):
         newfiles = [os.path.join(logdir,file) for file in os.listdir(logdir) if not self.ingest_mark in file]
         if newfiles:
             self.logfiles = newfiles
-            print(newfiles)
-            exit()
             return True
         else:
             return False  
