@@ -77,7 +77,7 @@ class StabilityCollector(diamond.collector.Collector):
             '32': '32',
             '48': '64'
             }
-        return channelmap.get(channel)
+        return channelmap[channel]
 
     def publish(self, name, value, raw_value=None, precision=0,
                metric_type='GAUGE', instance=None, timestamp=None):
