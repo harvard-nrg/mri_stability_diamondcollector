@@ -44,7 +44,7 @@ class StabilityCollector(diamond.collector.Collector):
             logger.info('no new files found')
             return
         for file in self.logfiles:
-            mtime = os.path.getctime(file)
+            ctime = os.path.getctime(file)
             with open(file, 'r') as input:
                 first_line = input.readline()
                 try:
