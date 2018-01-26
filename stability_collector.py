@@ -18,8 +18,8 @@ class StabilityCollector(diamond.collector.Collector):
     def __init__(self, config=None, handlers=[], name=None, configfile=None):
         diamond.collector.Collector.__init__(self, config=config,
         handlers=handlers, name=name, configfile=configfile)
-        self.ingest_mark = '-Ingested'
-        self.scanner_location = 'Harvard/Northwest/Bay2' ##for testing
+        self.ingest_dir = '-Ingested'
+        self.scanner_location = 'Harvard/Northwest/TestBay2' ##for testing
         self.base_dir = '/ncf/dicom-backups/_Scanner'
         self.logfiles = [os.path.join(self.base_dir,self.scanner_location,'Stability_20180110T165545.txt')]
         fh = logging.FileHandler(os.path.join(self.base_dir,self.scanner_location,'graphite.log'))
@@ -32,23 +32,23 @@ class StabilityCollector(diamond.collector.Collector):
         '''
         updates self.logfiles with new files, returns 'True' if new files exist
         '''
-        newfiles = [os.path.join(logdir,file) for file in os.listdir(logdir) if not self.ingest_mark in file]
+        newfiles = [os.path.join(logdir,file) for file in os.listdir(logdir) if 'Stability' in file]
         if newfiles:
             self.logfiles = newfiles
             return True
         else:
-            return False  
+            return False
         
     def collect(self):
         if not self.new_logfiles(os.path.join(self.base_dir,self.scanner_location)):
             logger.info('no new files found')
             return
         for file in self.logfiles:
-            mtime = os.path.getmtime(file)
+            mtime = os.path.getctime(file)
             with open(file, 'r') as input:
                 first_line = input.readline()
                 try:
-                    channel_no = re.match('Stability configuration: 16 slices, 500 measurements, (32|48) channels\n', first_line).group(1) 
+                    channel_no = re.match('Stability configuration: 16 slices, 500 measurements, (32|48) channels\n', first_line).group(1)
                     coil = self._resolve_channels(channel_no)
                 except AttributeError as e:
                     logger.info('error {} for file {}, line {}'.format(e,file,first_line))
@@ -57,7 +57,7 @@ class StabilityCollector(diamond.collector.Collector):
                 # divide document into sections
                 sections = re.findall('Stability (\w+) results:\n\nslice#(.*)\n 1(.*)\n 2(.*)\n 3(.*)\n 4(.*)\n 5(.*)\n 6(.*)\n 7(.*)\n 8(.*)\n 9(.*)\n10(.*)\n11(.*)\n12(.*)\n13(.*)\n14(.*)\n15(.*)\n16(.*)\n', lines, re.MULTILINE)
                 # parse each section
-                for section in sections: 
+                for section in sections:
                     section = list(section)
                     section_type = section.pop(0)
                     header = section.pop(0)
@@ -66,10 +66,10 @@ class StabilityCollector(diamond.collector.Collector):
                     # tableType.columnName.rowNum value
                     metricnames = [('{}.{}.{}.{}.{}'.format(self.dotlocation(),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
                     for metricname,value in metricnames:
-                        self.publish(metricname,value,timestamp=mtime)
+                        self.publish(metricname,value,timestamp=ctime)
             # mark file as ingested
-            fileparts = os.path.splitext(file)
-            new_file = '{}{}{}'.format(fileparts[0],self.ingest_mark,fileparts[1])
+            head,tail = os.path.split(file)
+            new_file = os.path.join(head,self.ingest_dir,tail)
             os.rename(file,new_file)
             logger.info('processed {} with coil {}'.format(file,coil))
 
