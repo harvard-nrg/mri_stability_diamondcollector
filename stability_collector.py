@@ -70,6 +70,8 @@ class StabilityCollector(diamond.collector.Collector):
             # mark file as ingested
             head,tail = os.path.split(file)
             new_file = os.path.join(head,self.ingest_dir,tail)
+            if not os.path.exists(os.path.join(head,self.ingest_dir):
+                    os.mkdir(os.path.join(head,self.ingest_dir))
             os.rename(file,new_file)
             logger.info('processed {} with coil {}'.format(file,coil))
 
