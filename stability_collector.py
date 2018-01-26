@@ -15,8 +15,9 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
 
 class StabilityCollector(diamond.collector.Collector):
 
-    def __init__(self):
-        diamond.collector.Collector.__init__(self)
+    def __init__(self, config=None, handlers=[], name=None, configfile=None):
+        diamond.collector.Collector.__init__(self, config=config,
+        handlers=handlers, name=name, configfile=configfile)
         self.ingest_mark = '-Ingested'
         self.scanner_location = 'Harvard/Northwest/Bay2' ##for testing
         self.base_dir = '/ncf/dicom-backups/_Scanner'
