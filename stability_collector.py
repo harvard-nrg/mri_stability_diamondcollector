@@ -16,14 +16,15 @@ class StabilityCollector(diamond.collector.Collector):
         diamond.collector.Collector.__init__(self, config=config,
         handlers=handlers, name=name, configfile=configfile)
         self.ingest_dir = 'Ingested'
-        self.scanner_location = 'Harvard/Northwest/TestBay2' ##for testing
+        self.scanner_location = 'Harvard/Northwest/TestBay4' ##for testing
         self.base_dir = '/ncf/dicom-backups/_Scanner'
         # default location of files to process
         self.logfiles = [os.path.join(self.base_dir,self.scanner_location,'Stability_20180110T165545.txt')]
         # set up logging
-        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
-                level=logging.INFO)
         fh = logging.FileHandler(os.path.join(self.base_dir,self.scanner_location,'graphite.log'))
+        fh.setLevel(logging.INFO)
+        formattern = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        fh.setFormatter(formatter)
         self.log.addHandler(fh)
 
     def dotlocation(self):
