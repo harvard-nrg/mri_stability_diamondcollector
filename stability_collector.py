@@ -10,24 +10,25 @@ import logging
 import diamond.collector
 from diamond.metric import Metric
 
-logger = logging.getLogger()
-logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s')
-
 class StabilityCollector(diamond.collector.Collector):
 
     def __init__(self, config=None, handlers=[], name=None, configfile=None):
         diamond.collector.Collector.__init__(self, config=config,
         handlers=handlers, name=name, configfile=configfile)
-        self.ingest_dir = '-Ingested'
+        self.ingest_dir = 'Ingested'
         self.scanner_location = 'Harvard/Northwest/TestBay2' ##for testing
         self.base_dir = '/ncf/dicom-backups/_Scanner'
+        # default location of files to process
         self.logfiles = [os.path.join(self.base_dir,self.scanner_location,'Stability_20180110T165545.txt')]
+        # set up logging
+        logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s',
+                level=logging.INFO)
         fh = logging.FileHandler(os.path.join(self.base_dir,self.scanner_location,'graphite.log'))
-        logger.addHandler(fh)
+        self.log.addHandler(fh)
 
     def dotlocation(self):
         return self.scanner_location.replace('/','.')
-    
+
     def new_logfiles(self, logdir):
         '''
         updates self.logfiles with new files, returns 'True' if new files exist
@@ -38,20 +39,20 @@ class StabilityCollector(diamond.collector.Collector):
             return True
         else:
             return False
-        
+
     def collect(self):
         if not self.new_logfiles(os.path.join(self.base_dir,self.scanner_location)):
-            logger.info('no new files found')
+            self.log.info('no new files found')
             return
         for file in self.logfiles:
-            ctime = os.path.getctime(file)
+            mtime = os.path.getmtime(file)
             with open(file, 'r') as input:
                 first_line = input.readline()
                 try:
                     channel_no = re.match('Stability configuration: 16 slices, 500 measurements, (32|48) channels\n', first_line).group(1)
                     coil = self._resolve_channels(channel_no)
                 except AttributeError as e:
-                    logger.info('error {} for file {}, line {}'.format(e,file,first_line))
+                    self.log.info('error {} for file {}, line {}'.format(e,file,first_line))
                     continue
                 lines = input.read()
                 # divide document into sections
@@ -66,14 +67,14 @@ class StabilityCollector(diamond.collector.Collector):
                     # tableType.columnName.rowNum value
                     metricnames = [('{}.{}.{}.{}.{}'.format(self.dotlocation(),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
                     for metricname,value in metricnames:
-                        self.publish(metricname,value,timestamp=ctime)
+                        self.publish(metricname,value,timestamp=mtime)
             # mark file as ingested
             head,tail = os.path.split(file)
             new_file = os.path.join(head,self.ingest_dir,tail)
             if not os.path.exists(os.path.join(head,self.ingest_dir)):
                     os.mkdir(os.path.join(head,self.ingest_dir))
             os.rename(file,new_file)
-            logger.info('processed {} with coil {}'.format(file,coil))
+            self.log.info('processed {} with coil {}'.format(file,coil))
 
     def _resolve_channels(self, channel):
         channelmap = {
@@ -82,7 +83,7 @@ class StabilityCollector(diamond.collector.Collector):
             }
         return channelmap[channel]
 
-    def publish(self, name, value, raw_value=None, precision=0,
+    def publish(self, name, value, raw_value=None, precision=2,
                metric_type='GAUGE', instance=None, timestamp=None):
         '''
         Publish a metric with the given name (monkey patch for creating the metric with a timestamp)
@@ -94,14 +95,14 @@ class StabilityCollector(diamond.collector.Collector):
         elif self.config['metrics_blacklist']:
             if self.config['metrics_blacklist'].match(name):
                 return
-        
+
         # Get metric Path
         path = self.get_metric_path(name, instance=instance)
-        
+
         # Get metric TTL
         ttl = float(self.config['interval']) * float(
             self.config['ttl_multiplier'])
-        
+
         # Create Metric
         try:
             metric = Metric(path, value, raw_value=raw_value, timestamp=timestamp,
@@ -111,7 +112,7 @@ class StabilityCollector(diamond.collector.Collector):
             self.log.error(('Error when creating new Metric: path=%r, '
                             'value=%r'), path, value)
             raise
-        
+
         # Publish Metric
         self.publish_metric(metric)
         #print(metric) ##for testing
