@@ -16,7 +16,7 @@ class StabilityCollector(diamond.collector.Collector):
         diamond.collector.Collector.__init__(self, config=config,
         handlers=handlers, name=name, configfile=configfile)
         self.ingest_dir = 'Ingested'
-        self.scanner_location = 'Harvard/Northwest/TestBay4' ##for testing
+        self.scanner_location = 'Harvard/Northwest/Bay1'
         self.base_dir = '/ncf/dicom-backups/_Scanner'
         # default location of files to process
         self.logfiles = [os.path.join(self.base_dir,self.scanner_location,'Stability_20180110T165545.txt')]
@@ -116,9 +116,7 @@ class StabilityCollector(diamond.collector.Collector):
 
         # Publish Metric
         self.publish_metric(metric)
-        #print(metric) ##for testing
 
 if __name__ == '__main__':
     instance = StabilityCollector()
     instance.collect()
-
