@@ -7,6 +7,7 @@ A script that parses stability session logs
 import os
 import re
 import logging
+import time
 import diamond.collector
 from diamond.metric import Metric
 
@@ -19,7 +20,7 @@ class StabilityCollector(diamond.collector.Collector):
         self.scanner_location = 'Harvard/Northwest/Bay1'
         self.base_dir = '/ncf/dicom-backups/_Scanner'
         # default location of files to process
-        self.logfiles = [os.path.join(self.base_dir,self.scanner_location,'Stability_20180110T165545.txt')]
+        self.logfiles = [os.path.join(self.base_dir,self.scanner_location,'Stability_20180124T133423.txt')]
         # set up logging
         fh = logging.FileHandler(os.path.join(self.base_dir,self.scanner_location,'graphite.log'))
         fh.setLevel(logging.INFO)
@@ -34,7 +35,7 @@ class StabilityCollector(diamond.collector.Collector):
         '''
         updates self.logfiles with new files, returns 'True' if new files exist
         '''
-        newfiles = [os.path.join(logdir,file) for file in os.listdir(logdir) if 'Stability' in file]
+        newfiles = [os.path.join(logdir,f) for f in os.listdir(logdir) if 'Stability' in f]
         if newfiles:
             self.logfiles = newfiles
             return True
@@ -45,15 +46,15 @@ class StabilityCollector(diamond.collector.Collector):
         if not self.new_logfiles(os.path.join(self.base_dir,self.scanner_location)):
             self.log.info('no new files found')
             return
-        for file in self.logfiles:
-            mtime = os.path.getmtime(file)
-            with open(file, 'r') as input:
+        for f in self.logfiles:
+            epoch = self.parse_epoch(f)
+            with open(f, 'r') as input:
                 first_line = input.readline()
                 try:
                     channel_no = re.match('Stability configuration: 16 slices, 500 measurements, (32|48) channels\n', first_line).group(1)
                     coil = self._resolve_channels(channel_no)
                 except AttributeError as e:
-                    self.log.info('error {} for file {}, line {}'.format(e,file,first_line))
+                    self.log.info('error {} for file {}, line {}'.format(e,f,first_line))
                     continue
                 lines = input.read()
                 # divide document into sections
@@ -63,19 +64,19 @@ class StabilityCollector(diamond.collector.Collector):
                     section = list(section)
                     section_type = section.pop(0)
                     header = section.pop(0)
-                    header_list = header.split()
+                    header_list = [c.replace('[%]','pct') for c in header.split()]
                     section = [r.split() for r in section]
                     # tableType.columnName.rowNum value
                     metricnames = [('{}.{}.{}.{}.{}'.format(self.dotlocation(),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
                     for metricname,value in metricnames:
-                        self.publish(metricname,value,timestamp=mtime)
+                        self.publish(metricname,value,timestamp=epoch)
             # mark file as ingested
-            head,tail = os.path.split(file)
+            head,tail = os.path.split(f)
             new_file = os.path.join(head,self.ingest_dir,tail)
             if not os.path.exists(os.path.join(head,self.ingest_dir)):
                     os.mkdir(os.path.join(head,self.ingest_dir))
-            os.rename(file,new_file)
-            self.log.info('processed {} with coil {}'.format(file,coil))
+            os.rename(f,new_file)
+            self.log.info('processed {} with coil {}'.format(f,coil))
 
     def _resolve_channels(self, channel):
         channelmap = {
@@ -83,6 +84,14 @@ class StabilityCollector(diamond.collector.Collector):
             '48': '64'
             }
         return channelmap[channel]
+
+    def parse_epoch(self, s):
+        date_time = re.search('Stability_([0-9]{8}T[0-9]{6}).txt',s).group(1)
+        pattern = '%Y%m%dT%H%M%S'
+        print(date_time)
+        epoch = int(time.mktime(time.strptime(date_time, pattern)))
+        assert(epoch)
+        return epoch
 
     def publish(self, name, value, raw_value=None, precision=2,
                metric_type='GAUGE', instance=None, timestamp=None):
