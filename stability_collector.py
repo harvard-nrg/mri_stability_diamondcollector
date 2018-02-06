@@ -23,7 +23,7 @@ class StabilityCollector(diamond.collector.Collector):
         # set up logging
         fh = logging.FileHandler(os.path.join(self.base_dir,self.scanner_location,'graphite.log'))
         fh.setLevel(logging.INFO)
-        formattern = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         fh.setFormatter(formatter)
         self.log.addHandler(fh)
 
