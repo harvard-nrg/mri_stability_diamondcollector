@@ -17,11 +17,14 @@ class StabilityCollector(diamond.collector.Collector):
         diamond.collector.Collector.__init__(self, config=config,
         handlers=handlers, name=name, configfile=configfile)
         self.ingest_dir = 'Ingested'
-        self.scanner_location = 'Harvard/Northwest/Bay1'
+        self.scanner_location = 'Harvard/Northwest/TestBay2'
         self.base_dir = '/ncf/dicom-backups/_Scanner'
+        ##self.scanner_location = 'sample'
+        ##self.base_dir = '/Users/hhoke1/mri_stability_diamondcollector'
         # default location of files to process
         self.logfiles = [os.path.join(self.base_dir,self.scanner_location,'Stability_20180124T133423.txt')]
         # set up logging
+        self.log.setLevel(logging.INFO)
         fh = logging.FileHandler(os.path.join(self.base_dir,self.scanner_location,'graphite.log'))
         fh.setLevel(logging.INFO)
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
@@ -35,7 +38,8 @@ class StabilityCollector(diamond.collector.Collector):
         '''
         updates self.logfiles with new files, returns 'True' if new files exist
         '''
-        newfiles = [os.path.join(logdir,f) for f in os.listdir(logdir) if 'Stability' in f]
+        newfiles = [os.path.join(logdir,f) for f in os.listdir(logdir)
+                if f[0:10] == 'Stability_' ]
         if newfiles:
             self.logfiles = newfiles
             return True
@@ -68,6 +72,7 @@ class StabilityCollector(diamond.collector.Collector):
                     section = [r.split() for r in section]
                     # tableType.columnName.rowNum value
                     metricnames = [('{}.{}.{}.{}.{}'.format(self.dotlocation(),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
+                    self.publish(metricnames[0][0],metricnames[0][1],timestamp=epoch,dry_run=True)
                     for metricname,value in metricnames:
                         self.publish(metricname,value,timestamp=epoch)
             # mark file as ingested
@@ -88,13 +93,12 @@ class StabilityCollector(diamond.collector.Collector):
     def parse_epoch(self, s):
         date_time = re.search('Stability_([0-9]{8}T[0-9]{6}).txt',s).group(1)
         pattern = '%Y%m%dT%H%M%S'
-        print(date_time)
         epoch = int(time.mktime(time.strptime(date_time, pattern)))
         assert(epoch)
         return epoch
 
     def publish(self, name, value, raw_value=None, precision=2,
-               metric_type='GAUGE', instance=None, timestamp=None):
+               metric_type='GAUGE', instance=None, timestamp=None, dry_run=False):
         '''
         Publish a metric with the given name (monkey patch for creating the metric with a timestamp)
         '''
@@ -124,7 +128,10 @@ class StabilityCollector(diamond.collector.Collector):
             raise
 
         # Publish Metric
-        self.publish_metric(metric)
+        if dry_run:
+            self.log.info('dry run sample: {}'.format(metric))
+        else:
+            self.publish_metric(metric)
 
 if __name__ == '__main__':
     instance = StabilityCollector()
