@@ -17,7 +17,7 @@ class StabilityCollector(diamond.collector.Collector):
         diamond.collector.Collector.__init__(self, config=config,
         handlers=handlers, name=name, configfile=configfile)
         self.ingest_dir = 'Ingested'
-        self.scanner_location = 'Harvard/Northwest/TestBay2'
+        self.scanner_location = 'Harvard/Northwest/TestBay8'
         self.base_dir = '/ncf/dicom-backups/_Scanner'
         ##self.scanner_location = 'sample'
         ##self.base_dir = '/Users/hhoke1/mri_stability_diamondcollector'
@@ -68,7 +68,9 @@ class StabilityCollector(diamond.collector.Collector):
                     section = list(section)
                     section_type = section.pop(0)
                     header = section.pop(0)
+                    # to conform to graphic metric name standards
                     header_list = [c.replace('[%]','pct') for c in header.split()]
+                    header_list = [re.sub(r'\W+', '', s) for s in header_list]
                     section = [r.split() for r in section]
                     # tableType.columnName.rowNum value
                     metricnames = [('{}.{}.{}.{}.{}'.format(self.dotlocation(),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
