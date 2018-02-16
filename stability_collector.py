@@ -17,7 +17,7 @@ class StabilityCollector(diamond.collector.Collector):
         diamond.collector.Collector.__init__(self, config=config,
         handlers=handlers, name=name, configfile=configfile)
         self.ingest_dir = 'Ingested'
-        self.scanner_location = 'Harvard/Northwest/TestBay8'
+        self.scanner_location = 'Harvard/Northwest/TestBay1'
         self.base_dir = '/ncf/dicom-backups/_Scanner'
         ##self.scanner_location = 'sample'
         ##self.base_dir = '/Users/hhoke1/mri_stability_diamondcollector'
