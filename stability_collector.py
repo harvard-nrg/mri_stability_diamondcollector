@@ -17,12 +17,12 @@ class StabilityCollector(diamond.collector.Collector):
         diamond.collector.Collector.__init__(self, config=config,
         handlers=handlers, name=name, configfile=configfile)
         self.ingest_dir = 'Ingested'
-        self.scanner_location = 'Harvard/Northwest/TestBay1'
+        self.scanner_location = 'Harvard/Northwest/Bay1'
         self.base_dir = '/ncf/dicom-backups/_Scanner'
         ##self.scanner_location = 'sample'
         ##self.base_dir = '/Users/hhoke1/mri_stability_diamondcollector'
         # default location of files to process
-        self.logfiles = [os.path.join(self.base_dir,self.scanner_location,'Stability_20180124T133423.txt')]
+        self.logfiles = []
         # set up logging
         self.log.setLevel(logging.INFO)
         fh = logging.FileHandler(os.path.join(self.base_dir,self.scanner_location,'graphite.log'))
