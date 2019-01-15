@@ -41,7 +41,10 @@ class StabilityCollector(diamond.collector.Collector):
         newfiles = [os.path.join(logdir,f) for f in os.listdir(logdir)
                 if f[0:10] == 'Stability_' ]
         if newfiles:
+            self.log.debug(self.logfiles)
             self.logfiles = newfiles
+            self.log.debug('after newfiles:')
+            self.log.debug(self.logfiles)
             return True
         else:
             return False
@@ -58,7 +61,7 @@ class StabilityCollector(diamond.collector.Collector):
                     channel_no = re.match('Stability configuration: 16 slices, 500 measurements, (32|48) channels\n', first_line).group(1)
                     coil = self._resolve_channels(channel_no)
                 except AttributeError as e:
-                    self.log.info('error {} for file {}, line {}'.format(e,f,first_line))
+                    self.log.info('error \'{}\' for file \'{}\', line {}'.format(e,f,first_line))
                     continue
                 lines = input.read()
                 # divide document into sections
