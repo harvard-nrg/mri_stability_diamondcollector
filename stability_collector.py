@@ -77,8 +77,8 @@ class StabilityCollector(diamond.collector.Collector):
                     section = [r.split() for r in section]
                     # tableType.columnName.rowNum value
                     metricnames = [('{}.{}.{}.{}.{}'.format(self.dotlocation(),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
-                    self.publish(metricnames[0][0],metricnames[0][1],timestamp=epoch,dry_run=True)
                     for metricname,value in metricnames:
+                        self.publish(metricname,value,timestamp=epoch,dry_run=True)
                         self.publish(metricname,value,timestamp=epoch)
             # mark file as ingested
             head,tail = os.path.split(f)
