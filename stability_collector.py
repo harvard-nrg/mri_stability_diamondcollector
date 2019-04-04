@@ -58,7 +58,7 @@ class StabilityCollector(diamond.collector.Collector):
             with open(f, 'r') as input:
                 first_line = input.readline()
                 try:
-                    channel_no = re.match('Stability configuration: 16 slices, 500 measurements, (32|48) channels\n', first_line).group(1)
+                    channel_no = re.match('Stability configuration: 16 slices, 500 measurements, ([0-9]{2}) channels\n', first_line).group(1)
                     coil = self._resolve_channels(channel_no)
                 except AttributeError as e:
                     self.log.info('error \'{}\' for file \'{}\', line {}'.format(e,f,first_line))
@@ -91,7 +91,8 @@ class StabilityCollector(diamond.collector.Collector):
     def _resolve_channels(self, channel):
         channelmap = {
             '32': '32',
-            '48': '64'
+            '48': '64',
+            '64': '64'
             }
         return channelmap[channel]
 
