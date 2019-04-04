@@ -60,7 +60,7 @@ class StabilityCollector(diamond.collector.Collector):
                 try:
                     channel_no = re.match('Stability configuration: 16 slices, 500 measurements, ([0-9]{2}) channels\n', first_line).group(1)
                     coil = self._resolve_channels(channel_no)
-                except AttributeError as e:
+                except (AttributeError,KeyError) as e:
                     self.log.info('error \'{}\' for file \'{}\', line {}'.format(e,f,first_line))
                     continue
                 lines = input.read()
