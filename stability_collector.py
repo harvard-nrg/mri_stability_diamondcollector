@@ -17,22 +17,22 @@ class StabilityCollector(diamond.collector.Collector):
         diamond.collector.Collector.__init__(self, config=config,
         handlers=handlers, name=name, configfile=configfile)
         self.ingest_dir = 'Ingested'
-        self.scanner_location = 'Harvard/Northwest/Bay1'
-        self.base_dir = '/ncf/dicom-backups/_Scanner'
-        ##self.scanner_location = 'sample'
-        ##self.base_dir = '/Users/hhoke1/mri_stability_diamondcollector'
+        self.scanner_locations = ['sample','sample2']
+        self.base_dir = '/Users/hhoke1/mri_stability_diamondcollector'
+        self.search_dirs = {scanloc:os.path.join(self.base_dir,scanloc) for scanloc in self.scanner_locations}
         # default location of files to process
         self.logfiles = []
         # set up logging
         self.log.setLevel(logging.INFO)
-        fh = logging.FileHandler(os.path.join(self.base_dir,self.scanner_location,'graphite.log'))
-        fh.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-        fh.setFormatter(formatter)
-        self.log.addHandler(fh)
+        for scanner_location in self.scanner_locations:
+            fh = logging.FileHandler(os.path.join(self.base_dir,self.scanner_location,'diamond_collector.log'))
+            fh.setLevel(logging.INFO)
+            formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+            fh.setFormatter(formatter)
+            self.log.addHandler(fh)
 
-    def dotlocation(self):
-        return self.scanner_location.replace('/','.')
+    def dotlocation(self,scanner_location):
+        return scanner_location.replace('/','.')
 
     def new_logfiles(self, logdir):
         '''
@@ -48,9 +48,12 @@ class StabilityCollector(diamond.collector.Collector):
             return True
         else:
             return False
-
     def collect(self):
-        if not self.new_logfiles(os.path.join(self.base_dir,self.scanner_location)):
+        for scanloc,searchdir in self.search_dirs.items():
+            _collect(scanloc,searchdir)
+
+    def _collect(self,scanloc,searchdir):
+        if not self.new_logfiles(searchdir):
             self.log.info('no new files found')
             return
         for f in self.logfiles:
@@ -76,7 +79,19 @@ class StabilityCollector(diamond.collector.Collector):
                     header_list = [re.sub(r'\W+', '', s) for s in header_list]
                     section = [r.split() for r in section]
                     # tableType.columnName.rowNum value
-                    metricnames = [('{}.{}.{}.{}.{}'.format(self.dotlocation(),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
+                    metricnames =[('{}.{}.{}.{}.{}'.format(self.dotlocation(scanloc),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
+                    dotloc = self.dotlocation(scanloc)
+#                    for slicenum,row in enumerate(section,start=1):
+#                        for i,value in enumerate(row):
+#                            metricname = '{DOTLOC}.{COIL}.{METRIC}.{STAT}.{INDEX}'.format(
+#                                    DOTLOC=dotloc,
+#                                    COIL=coil,
+#                                    METRIC=section_type,
+#                                    STAT=header_list[i],
+#                                    INDEX=slicenum)
+#                            metricnames.append((metricname,value))
+                    
+
                     for metricname,value in metricnames:
                         self.publish(metricname,value,timestamp=epoch,dry_run=True)
                         self.publish(metricname,value,timestamp=epoch)
