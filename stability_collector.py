@@ -18,8 +18,10 @@ class StabilityCollector(diamond.collector.Collector):
         handlers=handlers, name=name, configfile=configfile)
         self.ingest_dir = 'Ingested'
         self.scanner_locations = ['sample','sample2']
-        self.base_dir = '/Users/hhoke1/mri_stability_diamondcollector'
+        self.base_dir = '/ncf/cnl06/nrgadmin/collector_test/mri_stability_diamondcollector/'
         self.search_dirs = {scanloc:os.path.join(self.base_dir,scanloc) for scanloc in self.scanner_locations}
+        self.slices = 16
+        self.measurements = 500
         # default location of files to process
         self.logfiles = []
         # set up logging
@@ -58,17 +60,24 @@ class StabilityCollector(diamond.collector.Collector):
             return
         for f in self.logfiles:
             epoch = self.parse_epoch(f)
-            with open(f, 'r') as input:
-                first_line = input.readline()
+            with open(f, 'r') as infile:
+                first_line = infile.readline()
                 try:
-                    channel_no = re.match('Stability configuration: 16 slices, 500 measurements, ([0-9]{2}) channels\n', first_line).group(1)
+                    header_regex = 'Stability configuration: {} slices, {} measurements, ([0-9]{2}) channels\n'.format(SLICES=self.slices,MEAS=self.measurements)
+                    channel_no = re.match(header_regex, first_line).group(1)
                     coil = self._resolve_channels(channel_no)
                 except (AttributeError,KeyError) as e:
                     self.log.info('error \'{}\' for file \'{}\', line {}'.format(e,f,first_line))
+                    # you may occasionally run across a file with only 1 slice.
+                    # the below section partition will only process stability configurations with 16 slices.
                     continue
-                lines = input.read()
+                lines = infile.read()
                 # divide document into sections
-                sections = re.findall('Stability (\w+) results:\n\nslice#(.*)\n 1(.*)\n 2(.*)\n 3(.*)\n 4(.*)\n 5(.*)\n 6(.*)\n 7(.*)\n 8(.*)\n 9(.*)\n10(.*)\n11(.*)\n12(.*)\n13(.*)\n14(.*)\n15(.*)\n16(.*)\n', lines, re.MULTILINE)
+                section_regex = 'Stability (\w+) results:\n\nslice#(.*)\n'
+                for slice_no in range(1,self.slices+1):
+                    slice_row_header = '{SLICENO: >{fill}}(.*)\n'.format(SLICENO=slice_no,fill=2)
+                    section_regex += slice_row_header
+                sections = re.findall(section_regex, lines, re.MULTILINE)
                 # parse each section
                 for section in sections:
                     section = list(section)
@@ -79,17 +88,17 @@ class StabilityCollector(diamond.collector.Collector):
                     header_list = [re.sub(r'\W+', '', s) for s in header_list]
                     section = [r.split() for r in section]
                     # tableType.columnName.rowNum value
-                    metricnames =[('{}.{}.{}.{}.{}'.format(self.dotlocation(scanloc),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
-                    dotloc = self.dotlocation(scanloc)
-#                    for slicenum,row in enumerate(section,start=1):
-#                        for i,value in enumerate(row):
-#                            metricname = '{DOTLOC}.{COIL}.{METRIC}.{STAT}.{INDEX}'.format(
-#                                    DOTLOC=dotloc,
-#                                    COIL=coil,
-#                                    METRIC=section_type,
-#                                    STAT=header_list[i],
-#                                    INDEX=slicenum)
-#                            metricnames.append((metricname,value))
+#                    metricnames =[('{}.{}.{}.{}.{}'.format(self.dotlocation(scanloc),coil,section_type,header_list[i],s+1),v) for s,r in enumerate(section) for i,v in enumerate(r)]
+#                    dotloc = self.dotlocation(scanloc)
+                    for slicenum,row in enumerate(section,start=1):
+                        for i,value in enumerate(row):
+                            metricname = '{DOTLOC}.{COIL}.{METRIC}.{STAT}.{INDEX}'.format(
+                                    DOTLOC=dotloc,
+                                    COIL=coil,
+                                    METRIC=section_type,
+                                    STAT=header_list[i],
+                                    INDEX=slicenum)
+                            metricnames.append((metricname,value))
                     
 
                     for metricname,value in metricnames:
