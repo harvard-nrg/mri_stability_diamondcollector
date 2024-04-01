@@ -14,14 +14,16 @@ from diamond.metric import Metric
 class StabilityCollector(diamond.collector.Collector):
 
     def __init__(self, config=None, handlers=[], name=None, configfile=None):
-        diamond.collector.Collector.__init__(self, config=config,
-        handlers=handlers, name=name, configfile=configfile)
+        super(StabilityCollector, self).__init__(
+            config=config,
+            handlers=handlers,
+            name=name,
+            configfile=configfile
+        )
         self.ingest_dir = 'Ingested'
         self.scanner_location = 'Harvard/Northwest/Bay1'
         self.base_dir = '/ncf/dicom-backups/_Scanner'
-        ##self.scanner_location = 'sample'
-        ##self.base_dir = '/Users/hhoke1/mri_stability_diamondcollector'
-        # default location of files to process
+        self.pattern = re.compile('Stability_([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}).txt')
         self.logfiles = []
         # set up logging
         self.log.setLevel(logging.INFO)
@@ -38,8 +40,10 @@ class StabilityCollector(diamond.collector.Collector):
         '''
         updates self.logfiles with new files, returns 'True' if new files exist
         '''
-        newfiles = [os.path.join(logdir,f) for f in os.listdir(logdir)
-                if f[0:10] == 'Stability_' ]
+        newfiles = list()
+        for f in os.listdir(logdir):
+            if self.pattern.match(f):
+                newfiles.append(os.path.join(logdir, f))
         if newfiles:
             self.log.debug(self.logfiles)
             self.logfiles = newfiles
@@ -97,8 +101,9 @@ class StabilityCollector(diamond.collector.Collector):
         return channelmap[channel]
 
     def parse_epoch(self, s):
-        date_time = re.search('Stability_([0-9]{8}T[0-9]{6}).txt',s).group(1)
-        pattern = '%Y%m%dT%H%M%S'
+        basename = os.path.basename(s)
+        date_time = self.pattern.match(basename).group(1)
+        pattern = '%Y-%m-%dT%H-%M-%S'
         epoch = int(time.mktime(time.strptime(date_time, pattern)))
         assert(epoch)
         return epoch
